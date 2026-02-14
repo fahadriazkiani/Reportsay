@@ -12,7 +12,8 @@ import re
 # --- 1. CONFIGURATION ---
 st.set_page_config(
     page_title="ReportSay - AI Medical Assistant", 
-    page_icon="https://i.postimg.cc/VLmw1MPY/logo.png", 
+    # Updated to new transparent logo
+    page_icon="https://i.postimg.cc/V6QMy94J/Without.png", 
     layout="wide"
 )
 
@@ -26,7 +27,7 @@ st.markdown("""
     header {visibility: hidden;}
     .block-container { padding-top: 1rem; } 
 
-    /* --- HERO HEADER (Updated) --- */
+    /* --- HERO HEADER --- */
     .hero-container {
         display: flex;
         align-items: center;
@@ -34,7 +35,7 @@ st.markdown("""
         background-color: #f4f9ff; /* Subtle Bluish Tint */
         padding: 2.5rem;
         border-radius: 15px;
-        box-shadow: 0 4px 12px rgba(0,123,255,0.05); /* Blue-tinted shadow */
+        box-shadow: 0 4px 12px rgba(0,123,255,0.05);
         margin-bottom: 30px;
         border: 1px solid #e1eaf5;
     }
@@ -53,7 +54,7 @@ st.markdown("""
     .hero-title {
         font-size: 3.5rem;
         font-weight: 800;
-        color: #007BFF !important; /* Forced Blue Color */
+        color: #007BFF !important;
         line-height: 1.1;
         margin: 0;
         font-family: 'Helvetica Neue', sans-serif;
@@ -75,7 +76,7 @@ st.markdown("""
         border: 1px solid #e1e4e8;
     }
 
-    /* --- PRICE CARDS (Al-Noor Style) --- */
+    /* --- PRICE CARDS --- */
     .lab-card {
         background-color: #ffffff;
         border-radius: 12px;
@@ -165,10 +166,10 @@ else:
     st.error("⚠️ API Key missing! Please check Streamlit Secrets.")
 
 # --- 4. HERO HEADER (HTML) ---
-# This replaces the old header with a properly aligned Flexbox structure
+# Updated to new transparent logo
 st.markdown("""
     <div class="hero-container">
-        <img src="https://i.postimg.cc/VLmw1MPY/logo.png" class="hero-logo">
+        <img src="https://i.postimg.cc/V6QMy94J/Without.png" class="hero-logo">
         <div class="hero-text-col">
             <h1 class="hero-title">Reportsay</h1>
             <p class="hero-subtitle">Advanced AI Analysis & Price Transparency</p>
@@ -199,15 +200,13 @@ def clean_text_for_pdf(text):
 tab1, tab2 = st.tabs(["📄 AI Report Analysis", "💰 Smart Price Checker"])
 
 # ==========================================
-# TAB 1: AI REPORT ANALYSIS (Redesigned)
+# TAB 1: AI REPORT ANALYSIS
 # ==========================================
 with tab1:
-    # Creating a visual "Card" effect by using containers
     col1, col2 = st.columns([1, 1], gap="medium")
     
     with col1:
         st.markdown('<div class="section-header">📤 Upload Report</div>', unsafe_allow_html=True)
-        # We wrap this in a container to visually separate it
         with st.container():
             uploaded_file = st.file_uploader("Upload Image or PDF", type=['png', 'jpg', 'jpeg', 'pdf'])
             if not uploaded_file:
@@ -225,13 +224,11 @@ with tab1:
             image = Image.open(uploaded_file)
             col_img1, col_img2, col_img3 = st.columns([1, 2, 1])
             with col_img2:
-                # Image Preview Card
                 st.markdown('<div style="background: white; padding: 15px; border-radius: 12px; border: 1px solid #ddd; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">', unsafe_allow_html=True)
                 st.image(image, caption="Uploaded Document Preview", use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             st.write("")
-            # Big Action Button
             if st.button("✨ Analyze Report Now", use_container_width=True, type="primary"):
                 with st.spinner("🤖 AI is analyzing your report..."):
                     model = get_auto_model()
@@ -243,14 +240,14 @@ with tab1:
                             )
                             response = model.generate_content([prompt, image])
                             
-                            # Result Card
                             st.markdown(f"""<div class="report-box"><h3>📝 AI Analysis Result</h3>{response.text}</div>""", unsafe_allow_html=True)
                             
                             # PDF Logic
                             pdf = FPDF()
                             pdf.add_page()
                             try:
-                                img_resp = requests.get("https://i.postimg.cc/VLmw1MPY/logo.png")
+                                # Updated to new transparent logo for PDF
+                                img_resp = requests.get("https://i.postimg.cc/V6QMy94J/Without.png")
                                 if img_resp.status_code == 200:
                                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
                                         tmp_file.write(img_resp.content)
@@ -278,18 +275,20 @@ with tab1:
             st.error(f"Error processing file: {e}")
 
 # ==========================================
-# TAB 2: SMART PRICE CHECKER (Unchanged & Beautiful)
+# TAB 2: SMART PRICE CHECKER (6 Labs)
 # ==========================================
 with tab2:
     st.markdown("### 🏥 Compare Lab Rates in Lahore")
     st.caption("Live prices from verified lab panels.")
 
+    # Updated locations for 6 labs
     LAB_LOCATIONS = {
         "Mughal Labs": "https://maps.app.goo.gl/MughalLabsLahore",
         "Shaukat Khanum": "https://maps.app.goo.gl/SKMLahore",
         "IDC": "https://maps.app.goo.gl/IDCLahore",
         "Chughtai Lab": "https://maps.app.goo.gl/ChughtaiLahore",
-        "Al-Noor": "https://maps.app.goo.gl/AlNoorLahore"
+        "Al-Noor": "https://maps.app.goo.gl/AlNoorLahore",
+        "Excel Labs": "https://maps.app.goo.gl/ExcelLabsLahore"
     }
 
     COMMON_TESTS = ["Select a test...", "CBC", "HbA1c", "Glucose Profile", "Lipid Profile", "LFTs", "RFTs", "Cardiac Profile", "Thyroid Profile", "Vitamins"]
@@ -305,10 +304,13 @@ with tab2:
             
             if selected_test and selected_test != "Select a test...":
                 st.markdown(f"#### 💰 Prices for: **{selected_test}**")
+                
+                # 3 Columns for 6 labs = 2 perfect rows
                 cols = st.columns(3)
                 
                 for idx, (lab_name, tests) in enumerate(lab_data.items()):
                     with cols[idx % 3]:
+                        
                         price = tests.get(selected_test)
                         if not price:
                             for k, v in tests.items():
@@ -321,7 +323,7 @@ with tab2:
                         else:
                             price_display = '<div class="lab-price-missing">Check Lab</div>'
                         
-                        map_link = LAB_LOCATIONS.get(lab_name, "https://maps.google.com")
+                        map_link = LAB_LOCATIONS.get(lab_name, "http://googleusercontent.com/maps.google.com")
 
                         card_html = f"""
                         <div class="lab-card">
