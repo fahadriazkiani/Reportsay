@@ -1,91 +1,123 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
-import urllib.parse  # Used to create the free Maps links
+import urllib.parse
+from fpdf import FPDF
+import requests
+from io import BytesIO
+import json
+import os
 
-# ==========================================
-# 🔑 SETUP: PASTE YOUR API KEY BELOW
-# ==========================================
-genai.configure(api_key=st.secrets["MY_API_KEY"])
-genai.configure(api_key=GOOGLE_API_KEY)
+# --- 1. PAGE CONFIGURATION ---
+st.set_page_config(page_title="ReportSay - AI Lab Interpreter", layout="wide")
 
-st.set_page_config(page_title="Reportsay", page_icon="🩺", layout="centered")
+# --- 2. SECURE API SETUP ---
+# Uses the "Secret" vault we set up in Streamlit
+if "MY_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["MY_API_KEY"])
+else:
+    st.error("Missing API Key! Please add 'MY_API_KEY' to Streamlit Secrets.")
 
-# Custom CSS for Professional Blue Branding
+# --- 3. UI STYLING ---
 st.markdown("""
     <style>
-    .main-title {font-family: 'Helvetica', sans-serif; font-size: 3rem; color: #007BFF; text-align: center; font-weight: 800; margin-bottom: 0px;}
-    .sub-title {font-size: 1.2rem; color: #555; text-align: center; margin-bottom: 2rem;}
-    .report-box {border: 2px solid #007BFF; padding: 20px; border-radius: 10px; background-color: #f0f8ff; color: #333;}
+    .main { background-color: #f5f7f9; }
+    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #007bff; color: white; }
+    .stExpander { background-color: white; border-radius: 10px; }
     </style>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# Sidebar for Model Selection
-st.sidebar.header("⚙️ Settings")
-try:
-    model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-    selected_model_name = st.sidebar.selectbox("Select AI Model:", model_list, index=0)
-    model = genai.GenerativeModel(selected_model_name)
-    st.sidebar.success(f"Connected to: {selected_model_name}")
-except:
-    model = genai.GenerativeModel('gemini-1.5-flash')
+# --- 4. NAVIGATION TABS ---
+tab1, tab2 = st.tabs(["🔍 AI Report Analysis", "💰 Lab Price Comparison"])
 
-# ==========================================
-# 🚀 APP INTERFACE
-# ==========================================
-st.markdown('<div class="main-title">Reportsay 🩺</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Your Personal AI Medical Assistant</div>', unsafe_allow_html=True)
-
-tab1, tab2 = st.tabs(["📝 Interpret Report", "💰 Compare Prices (Lahore)"])
-
-# --- TAB 1: AI INTERPRETER ---
+# --- TAB 1: AI REPORT ANALYSIS ---
 with tab1:
-    st.write("### Upload a Lab Report")
-    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption='Uploaded Report', use_container_width=True)
-        if st.button("🔍 Analyze with Reportsay"):
-            if "PASTE_YOUR_KEY" in GOOGLE_API_KEY:
-                st.error("⚠️ Please paste your API Key!")
-            else:
-                with st.spinner('Analyzing...'):
-                    try:
-                        prompt = "Analyze this report. Use 🔴 for High/Low and ✅ for Normal. Explain abnormalities simply. Disclaimer: AI only."
-                        response = model.generate_content([prompt, image])
-                        st.markdown(f'<div class="report-box">{response.text}</div>', unsafe_allow_html=True)
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-
-# --- TAB 2: PRICE CHECKER (WITH FREE MAPS LINKS) ---
-with tab2:
-    st.write("### 🏥 Compare Lab Rates in Lahore")
-    test_name = st.selectbox("Select a Test:", 
-                             ["CBC (Complete Blood Count)", "LFT (Liver Function)", "RFT/KFT (Kidney Function)", 
-                              "Lipid Profile", "Cardiac Profile", "HbA1c (Diabetes)", "Thyroid Profile", "Vitamin D"])
+    st.title("📊 ReportSay")
+    st.subheader("Your AI-Powered Medical Lab Assistant")
     
-    if st.button("Check Prices"):
-        st.write(f"Showing estimated rates for: **{test_name}**")
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        uploaded_file = st.file_uploader("Upload Lab Report (Image/PDF)", type=['png', 'jpg', 'jpeg', 'pdf'])
+        language = st.radio("Interpretation Language", ["English", "Urdu (اردو)"])
         
-        # Data including Lab name and estimated prices
-        labs_data = [
-            {"Lab": "Mughal Labs", "Price": "Rs. 750", "Location": "Mughal Labs Lahore"},
-            {"Lab": "Excel Labs", "Price": "Rs. 800", "Location": "Excel Labs Lahore"},
-            {"Lab": "Shaukat Khanum", "Price": "Rs. 850", "Location": "Shaukat Khanum Laboratory Lahore"},
-            {"Lab": "IDC", "Price": "Rs. 900", "Location": "Islamabad Diagnostic Centre Lahore"},
-            {"Lab": "Chughtai Lab", "Price": "Rs. 950", "Location": "Chughtai Lab Lahore"}
-        ]
+    with col2:
+        st.info("💡 **How it works:** Upload your report, and our AI will explain the values in simple terms based on your preferred language.")
+
+    if uploaded_file:
+        # Display the uploaded image
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Uploaded Report", use_container_width=True)
         
-        # Display as custom "cards" with a Google Maps button for each
-        for item in labs_data:
-            col1, col2, col3 = st.columns([2, 1, 1])
-            with col1:
-                st.write(f"**{item['Lab']}**")
-            with col2:
-                st.write(item['Price'])
-            with col3:
-                # Create the free Google Maps URL
-                query = urllib.parse.quote(item['Location'])
-                maps_url = f"https://www.google.com/maps/search/?api=1&query={query}"
-                st.link_button("📍 Find", maps_url)
-            st.divider()
+        if st.button("Analyze Report"):
+            with st.spinner("Analyzing your report... Please wait."):
+                # AI Prompt Logic
+                prompt = f"Interpret this medical lab report in {language}. Explain high/low values and suggest next steps. Use simple terms."
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                response = model.generate_content([prompt, image])
+                
+                st.success("Analysis Complete!")
+                st.markdown("### 📝 Interpretation")
+                st.write(response.text)
+                
+                # PDF Download Feature
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_font("Arial", size=12)
+                pdf.cell(200, 10, txt="ReportSay - AI Analysis", ln=1, align='C')
+                pdf.multi_cell(0, 10, txt=response.text)
+                pdf_output = pdf.output(dest='S').encode('latin-1', 'replace')
+                st.download_button(label="Download Analysis as PDF", data=pdf_output, file_name="ReportSay_Analysis.pdf", mime="application/pdf")
+
+# --- TAB 2: DYNAMIC PRICE CHECKER ---
+with tab2:
+    st.title("💰 Smart Price Checker")
+    st.markdown("Compare live prices across **Mughal, SKM, Al-Noor, IDC, and Chughtai**.")
+    
+    # Path to the data generated by your scraper robot
+    json_path = 'data/lab_prices.json'
+    
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, 'r') as f:
+                lab_database = json.load(f)
+            
+            # Get the update time from the file
+            last_updated = os.path.getmtime(json_path)
+            import datetime
+            st.caption(f"🕒 Last updated: {datetime.datetime.fromtimestamp(last_updated).strftime('%Y-%m-%d %H:%M')}")
+
+            search_query = st.text_input("Enter Lab Test Name (e.g. CBC, Vitamin D, Glucose):").strip().upper()
+            
+            if search_query:
+                results_found = False
+                cols = st.columns(3)
+                col_idx = 0
+                
+                for lab_name, tests in lab_database.items():
+                    with cols[col_idx % 3]:
+                        st.markdown(f"### 🏥 {lab_name}")
+                        lab_matches = {k: v for k, v in tests.items() if search_query in k.upper()}
+                        
+                        if lab_matches:
+                            for test, price in lab_matches.items():
+                                st.success(f"**{test}**\n\nPrice: **Rs. {price}**")
+                            results_found = True
+                        else:
+                            st.warning(f"No match at {lab_name}")
+                    col_idx += 1
+                
+                if not results_found:
+                    st.error(f"No labs found offering '{search_query}' in our database.")
+            else:
+                st.write("Enter a test name above to compare prices.")
+                
+        except Exception as e:
+            st.error(f"Error reading database: {e}")
+    else:
+        st.warning("🔄 Our robot is currently fetching the latest prices. Please refresh in 2 minutes.")
+        st.info("The price-checker will be active as soon as the 'Daily Lab Price Update' workflow completes.")
+
+# --- 5. FOOTER ---
+st.markdown("---")
+st.caption("Disclaimer: ReportSay is an AI assistant and should not replace professional medical advice. Always consult with a doctor.")
