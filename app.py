@@ -20,28 +20,29 @@ st.set_page_config(
 st.markdown("""
     <style>
     /* Global Background */
-    .main { background-color: #f4f6f9; }
+    .main { background-color: #f8f9fa; }
     
     /* Hide Default Streamlit Elements */
     header {visibility: hidden;}
-    .block-container { padding-top: 2rem; } /* Reduce top whitespace */
+    .block-container { padding-top: 1rem; } 
 
-    /* --- HERO HEADER (Flexbox for perfect alignment) --- */
+    /* --- HERO HEADER (Updated) --- */
     .hero-container {
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: #ffffff;
-        padding: 2rem;
+        background-color: #f4f9ff; /* Subtle Bluish Tint */
+        padding: 2.5rem;
         border-radius: 15px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 12px rgba(0,123,255,0.05); /* Blue-tinted shadow */
         margin-bottom: 30px;
+        border: 1px solid #e1eaf5;
     }
     
     .hero-logo {
-        width: 100px; /* Increased size */
+        width: 100px;
         height: auto;
-        margin-right: 20px;
+        margin-right: 25px;
     }
     
     .hero-text-col {
@@ -52,7 +53,7 @@ st.markdown("""
     .hero-title {
         font-size: 3.5rem;
         font-weight: 800;
-        color: #007BFF;
+        color: #007BFF !important; /* Forced Blue Color */
         line-height: 1.1;
         margin: 0;
         font-family: 'Helvetica Neue', sans-serif;
@@ -60,14 +61,13 @@ st.markdown("""
     
     .hero-subtitle {
         font-size: 1.2rem;
-        color: #666;
+        color: #555;
         margin: 5px 0 0 0;
         font-weight: 400;
     }
 
-    /* --- INPUT CARDS (Upload & Language) --- */
-    /* This makes the upload and select box look like panels */
-    .css-1r6slb0, .css-12oz5g7 { /* Target Streamlit containers */
+    /* --- INPUT CARDS --- */
+    .css-1r6slb0, .css-12oz5g7 { 
         background-color: white;
         padding: 20px;
         border-radius: 12px;
@@ -146,7 +146,6 @@ st.markdown("""
         margin-top: 20px;
     }
     
-    /* Styled Headers for Sections */
     .section-header {
         font-size: 1.5rem;
         font-weight: 700;
