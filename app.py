@@ -12,8 +12,7 @@ import re
 # --- 1. CONFIGURATION ---
 st.set_page_config(
     page_title="ReportSay - AI Medical Assistant", 
-    # Updated to new transparent logo
-    page_icon="https://i.postimg.cc/V6QMy94J/Without.png", 
+    page_icon="https://i.postimg.cc/V6QMy94J/Without.png", # Transparent Favicon
     layout="wide"
 )
 
@@ -23,16 +22,56 @@ st.markdown("""
     /* Global Background */
     .main { background-color: #f8f9fa; }
     
-    /* Hide Default Streamlit Elements */
+    /* Hide Default Header */
     header {visibility: hidden;}
     .block-container { padding-top: 1rem; } 
+
+    /* --- CUSTOM TAB DESIGN (Boxed & Light Blue) --- */
+    /* 1. Tab Container */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px; /* Space between tabs */
+        background-color: transparent;
+        border-bottom: 2px solid #e1e4e8; /* Line under tabs */
+        padding-bottom: 0px;
+    }
+
+    /* 2. Individual Tabs (Unselected) */
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #ffffff;
+        border-radius: 10px 10px 0px 0px; /* Rounded top corners */
+        gap: 1px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        border: 1px solid #e1e4e8;
+        border-bottom: none;
+        color: #555;
+        font-weight: 600;
+        flex: 1; /* Make them equal width */
+    }
+
+    /* 3. Active Tab (Light Blue Highlight) */
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background-color: #e6f3ff !important; /* Light Blue Background */
+        color: #007BFF !important; /* Brand Blue Text */
+        border: 2px solid #007BFF;
+        border-bottom: none; /* Connects to content below */
+        font-weight: 800;
+    }
+
+    /* 4. Hover Effect */
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #007BFF;
+        background-color: #f0f7ff;
+    }
 
     /* --- HERO HEADER --- */
     .hero-container {
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: #f4f9ff; /* Subtle Bluish Tint */
+        background-color: #f4f9ff;
         padding: 2.5rem;
         border-radius: 15px;
         box-shadow: 0 4px 12px rgba(0,123,255,0.05);
@@ -44,11 +83,6 @@ st.markdown("""
         width: 100px;
         height: auto;
         margin-right: 25px;
-    }
-    
-    .hero-text-col {
-        display: flex;
-        flex-direction: column;
     }
     
     .hero-title {
@@ -67,16 +101,7 @@ st.markdown("""
         font-weight: 400;
     }
 
-    /* --- INPUT CARDS --- */
-    .css-1r6slb0, .css-12oz5g7 { 
-        background-color: white;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        border: 1px solid #e1e4e8;
-    }
-
-    /* --- PRICE CARDS --- */
+    /* --- CARDS & BOXES --- */
     .lab-card {
         background-color: #ffffff;
         border-radius: 12px;
@@ -91,71 +116,24 @@ st.markdown("""
         flex-direction: column;
         justify-content: space-between;
     }
-    
     .lab-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 10px 20px rgba(0,123,255,0.15);
         border-color: #007BFF;
     }
-
-    .lab-name {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #333;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 10px;
-        border-bottom: 2px solid #f0f2f5;
-        padding-bottom: 10px;
-    }
-
-    .lab-price {
-        font-size: 2rem;
-        font-weight: 800;
-        color: #28a745;
-        margin: 10px 0;
-    }
-    
-    .lab-price-missing {
-        font-size: 1.2rem;
-        color: #dc3545;
-        font-style: italic;
-        margin: 15px 0;
-    }
-
+    .lab-price { font-size: 2rem; font-weight: 800; color: #28a745; margin: 10px 0; }
+    .lab-price-missing { font-size: 1.2rem; color: #dc3545; font-style: italic; margin: 15px 0; }
     .lab-btn {
-        display: block;
-        width: 100%;
-        padding: 10px 0;
-        background-color: #007BFF;
-        color: white !important;
-        text-decoration: none;
-        border-radius: 8px;
-        font-weight: 600;
-        transition: background-color 0.2s;
-        text-align: center;
+        display: block; width: 100%; padding: 10px 0;
+        background-color: #007BFF; color: white !important;
+        text-decoration: none; border-radius: 8px; font-weight: 600;
+        transition: background-color 0.2s; text-align: center;
     }
     .lab-btn:hover { background-color: #0056b3; }
-
-    /* AI Report Box */
-    .report-box { 
-        background-color: #ffffff; 
-        padding: 25px; 
-        border-radius: 12px; 
-        border-left: 5px solid #007BFF; 
-        box-shadow: 0 5px 15px rgba(0,0,0,0.05); 
-        margin-top: 20px;
-    }
     
-    .section-header {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #444;
-        margin-bottom: 15px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
+    /* Report & Input Boxes */
+    .report-box { background-color: #ffffff; padding: 25px; border-radius: 12px; border-left: 5px solid #007BFF; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-top: 20px; }
+    .section-header { font-size: 1.5rem; font-weight: 700; color: #444; margin-bottom: 15px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -165,8 +143,7 @@ if "MY_API_KEY" in st.secrets:
 else:
     st.error("⚠️ API Key missing! Please check Streamlit Secrets.")
 
-# --- 4. HERO HEADER (HTML) ---
-# Updated to new transparent logo
+# --- 4. HERO HEADER ---
 st.markdown("""
     <div class="hero-container">
         <img src="https://i.postimg.cc/V6QMy94J/Without.png" class="hero-logo">
@@ -179,7 +156,7 @@ st.markdown("""
 
 # --- 5. FUNCTIONS ---
 def get_auto_model():
-    """Finds best available Gemini model automatically."""
+    """Finds best available Gemini model."""
     try:
         all_models = [m for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         for m in all_models:
@@ -196,7 +173,7 @@ def clean_text_for_pdf(text):
     text = re.sub(r'^#+\s+', '', text, flags=re.MULTILINE)
     return text
 
-# --- 6. NAVIGATION ---
+# --- 6. NAVIGATION (Tabs) ---
 tab1, tab2 = st.tabs(["📄 AI Report Analysis", "💰 Smart Price Checker"])
 
 # ==========================================
@@ -242,11 +219,9 @@ with tab1:
                             
                             st.markdown(f"""<div class="report-box"><h3>📝 AI Analysis Result</h3>{response.text}</div>""", unsafe_allow_html=True)
                             
-                            # PDF Logic
                             pdf = FPDF()
                             pdf.add_page()
                             try:
-                                # Updated to new transparent logo for PDF
                                 img_resp = requests.get("https://i.postimg.cc/V6QMy94J/Without.png")
                                 if img_resp.status_code == 200:
                                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
@@ -259,40 +234,34 @@ with tab1:
                             pdf.set_font("Arial", 'B', 16)
                             pdf.cell(0, 10, txt="ReportSay Analysis", ln=True, align='C')
                             pdf.ln(5)
-                            
                             pdf.set_font("Arial", size=11)
                             clean_txt = clean_text_for_pdf(response.text)
                             pdf.multi_cell(0, 7, txt=clean_txt.encode('latin-1', 'replace').decode('latin-1'))
-                            
                             pdf_output = pdf.output(dest='S').encode('latin-1')
-                            st.download_button("📥 Download Official Report (PDF)", pdf_output, "ReportSay_Analysis.pdf", "application/pdf", use_container_width=True)
                             
+                            st.download_button("📥 Download Official Report (PDF)", pdf_output, "ReportSay_Analysis.pdf", "application/pdf", use_container_width=True)
                         except Exception as e:
                              st.warning("🚦 Traffic Limit. Please wait 30 seconds." if "429" in str(e) else f"AI Error: {e}")
-                    else:
-                        st.error("No AI models found. Reboot app.")
-        except Exception as e:
-            st.error(f"Error processing file: {e}")
+                    else: st.error("No AI models found. Reboot app.")
+        except Exception as e: st.error(f"Error processing file: {e}")
 
 # ==========================================
-# TAB 2: SMART PRICE CHECKER (6 Labs)
+# TAB 2: SMART PRICE CHECKER (6 Verified Labs)
 # ==========================================
 with tab2:
     st.markdown("### 🏥 Compare Lab Rates in Lahore")
     st.caption("Live prices from verified lab panels.")
 
-    # Updated locations for 6 labs
     LAB_LOCATIONS = {
-        "Mughal Labs": "https://maps.app.goo.gl/MughalLabsLahore",
-        "Shaukat Khanum": "https://maps.app.goo.gl/SKMLahore",
-        "IDC": "https://maps.app.goo.gl/IDCLahore",
-        "Chughtai Lab": "https://maps.app.goo.gl/ChughtaiLahore",
-        "Al-Noor": "https://maps.app.goo.gl/AlNoorLahore",
-        "Excel Labs": "https://maps.app.goo.gl/ExcelLabsLahore"
+        "Mughal Labs": "https://www.google.com/maps/search/Mughal+Labs+Lahore",
+        "Shaukat Khanum": "https://www.google.com/maps/search/Shaukat+Khanum+Laboratory+Lahore",
+        "IDC": "https://www.google.com/maps/search/Islamabad+Diagnostic+Centre+Lahore",
+        "Chughtai Lab": "https://www.google.com/maps/search/Chughtai+Lab+Lahore",
+        "Al-Noor": "https://www.google.com/maps/search/Al-Noor+Diagnostic+Centre+Lahore",
+        "Excel Labs": "https://www.google.com/maps/search/Excel+Labs+Lahore"
     }
-
     COMMON_TESTS = ["Select a test...", "CBC", "HbA1c", "Glucose Profile", "Lipid Profile", "LFTs", "RFTs", "Cardiac Profile", "Thyroid Profile", "Vitamins"]
-
+    
     json_path = 'data/lab_prices.json'
     
     if os.path.exists(json_path):
@@ -304,13 +273,9 @@ with tab2:
             
             if selected_test and selected_test != "Select a test...":
                 st.markdown(f"#### 💰 Prices for: **{selected_test}**")
-                
-                # 3 Columns for 6 labs = 2 perfect rows
                 cols = st.columns(3)
-                
                 for idx, (lab_name, tests) in enumerate(lab_data.items()):
                     with cols[idx % 3]:
-                        
                         price = tests.get(selected_test)
                         if not price:
                             for k, v in tests.items():
@@ -318,11 +283,7 @@ with tab2:
                                     price = v
                                     break
                         
-                        if price:
-                            price_display = f'<div class="lab-price">Rs. {price}</div>'
-                        else:
-                            price_display = '<div class="lab-price-missing">Check Lab</div>'
-                        
+                        price_display = f'<div class="lab-price">Rs. {price}</div>' if price else '<div class="lab-price-missing">Check Lab</div>'
                         map_link = LAB_LOCATIONS.get(lab_name, "http://googleusercontent.com/maps.google.com")
 
                         card_html = f"""
@@ -337,8 +298,5 @@ with tab2:
             mtime = os.path.getmtime(json_path)
             dt = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
             st.caption(f"Last updated: {dt}")
-            
-        except Exception as e:
-            st.error(f"Data Error: {e}")
-    else:
-        st.warning("⚠️ Database is updating. Please run the 'Daily Lab Price Update' workflow on GitHub.")
+        except Exception as e: st.error(f"Data Error: {e}")
+    else: st.warning("⚠️ Database is updating. Please run the 'Daily Lab Price Update' workflow on GitHub.")
