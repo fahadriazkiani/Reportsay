@@ -17,21 +17,65 @@ st.set_page_config(
 )
 
 # --- 2. PROFESSIONAL DESIGN SYSTEM (CSS) ---
-# This CSS makes the "Cards" look like the Al-Noor website
 st.markdown("""
     <style>
-    /* Background */
+    /* Global Background */
     .main { background-color: #f4f6f9; }
     
-    /* Hide Default Header */
+    /* Hide Default Streamlit Elements */
     header {visibility: hidden;}
-    
-    /* Header Styling */
-    .custom-header { text-align: center; padding-bottom: 30px; padding-top: 20px; }
-    .custom-title { font-size: 3rem; font-weight: 800; color: #007BFF; font-family: 'Arial', sans-serif; }
-    .custom-subtitle { font-size: 1.2rem; color: #555; margin-top: -5px; }
+    .block-container { padding-top: 2rem; } /* Reduce top whitespace */
 
-    /* CARD DESIGN (The "Al-Noor" Look) */
+    /* --- HERO HEADER (Flexbox for perfect alignment) --- */
+    .hero-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #ffffff;
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        margin-bottom: 30px;
+    }
+    
+    .hero-logo {
+        width: 100px; /* Increased size */
+        height: auto;
+        margin-right: 20px;
+    }
+    
+    .hero-text-col {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 800;
+        color: #007BFF;
+        line-height: 1.1;
+        margin: 0;
+        font-family: 'Helvetica Neue', sans-serif;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.2rem;
+        color: #666;
+        margin: 5px 0 0 0;
+        font-weight: 400;
+    }
+
+    /* --- INPUT CARDS (Upload & Language) --- */
+    /* This makes the upload and select box look like panels */
+    .css-1r6slb0, .css-12oz5g7 { /* Target Streamlit containers */
+        background-color: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        border: 1px solid #e1e4e8;
+    }
+
+    /* --- PRICE CARDS (Al-Noor Style) --- */
     .lab-card {
         background-color: #ffffff;
         border-radius: 12px;
@@ -41,7 +85,7 @@ st.markdown("""
         border: 1px solid #e1e4e8;
         text-align: center;
         transition: transform 0.2s, box-shadow 0.2s;
-        height: 220px; /* Fixed height for uniformity */
+        height: 220px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -67,18 +111,17 @@ st.markdown("""
     .lab-price {
         font-size: 2rem;
         font-weight: 800;
-        color: #28a745; /* Green for "Good Price" */
+        color: #28a745;
         margin: 10px 0;
     }
     
     .lab-price-missing {
         font-size: 1.2rem;
-        color: #dc3545; /* Red for "Check Lab" */
+        color: #dc3545;
         font-style: italic;
         margin: 15px 0;
     }
 
-    /* BUTTON STYLING */
     .lab-btn {
         display: block;
         width: 100%;
@@ -89,6 +132,7 @@ st.markdown("""
         border-radius: 8px;
         font-weight: 600;
         transition: background-color 0.2s;
+        text-align: center;
     }
     .lab-btn:hover { background-color: #0056b3; }
 
@@ -99,6 +143,18 @@ st.markdown("""
         border-radius: 12px; 
         border-left: 5px solid #007BFF; 
         box-shadow: 0 5px 15px rgba(0,0,0,0.05); 
+        margin-top: 20px;
+    }
+    
+    /* Styled Headers for Sections */
+    .section-header {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #444;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -109,21 +165,23 @@ if "MY_API_KEY" in st.secrets:
 else:
     st.error("⚠️ API Key missing! Please check Streamlit Secrets.")
 
-# --- 4. HEADER ---
+# --- 4. HERO HEADER (HTML) ---
+# This replaces the old header with a properly aligned Flexbox structure
 st.markdown("""
-    <div class="custom-header">
-        <img src="https://i.postimg.cc/VLmw1MPY/logo.png" style="width: 90px; vertical-align: middle; margin-right: 15px;">
-        <span class="custom-title">Reportsay</span>
-        <p class="custom-subtitle">AI Analysis & Price Transparency</p>
+    <div class="hero-container">
+        <img src="https://i.postimg.cc/VLmw1MPY/logo.png" class="hero-logo">
+        <div class="hero-text-col">
+            <h1 class="hero-title">Reportsay</h1>
+            <p class="hero-subtitle">Advanced AI Analysis & Price Transparency</p>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. CORE FUNCTIONS (Unchanged & Robust) ---
+# --- 5. FUNCTIONS ---
 def get_auto_model():
     """Finds best available Gemini model automatically."""
     try:
         all_models = [m for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        # Priority: Flash > Pro > Standard
         for m in all_models:
             if 'flash' in m.name: return genai.GenerativeModel(m.name)
         for m in all_models:
@@ -133,7 +191,6 @@ def get_auto_model():
     except: return None
 
 def clean_text_for_pdf(text):
-    """Removes Markdown symbols for PDF."""
     text = re.sub(r'\*\*|__', '', text)
     text = re.sub(r'\*|_', '', text)
     text = re.sub(r'^#+\s+', '', text, flags=re.MULTILINE)
@@ -143,16 +200,25 @@ def clean_text_for_pdf(text):
 tab1, tab2 = st.tabs(["📄 AI Report Analysis", "💰 Smart Price Checker"])
 
 # ==========================================
-# TAB 1: AI REPORT ANALYSIS (Working Perfectly)
+# TAB 1: AI REPORT ANALYSIS (Redesigned)
 # ==========================================
 with tab1:
-    col1, col2 = st.columns([1, 1])
+    # Creating a visual "Card" effect by using containers
+    col1, col2 = st.columns([1, 1], gap="medium")
+    
     with col1:
-        st.markdown("### 📤 Upload Report")
-        uploaded_file = st.file_uploader("Upload Image or PDF", type=['png', 'jpg', 'jpeg', 'pdf'])
+        st.markdown('<div class="section-header">📤 Upload Report</div>', unsafe_allow_html=True)
+        # We wrap this in a container to visually separate it
+        with st.container():
+            uploaded_file = st.file_uploader("Upload Image or PDF", type=['png', 'jpg', 'jpeg', 'pdf'])
+            if not uploaded_file:
+                st.info("Supported formats: PNG, JPG, PDF (Max 200MB)")
+
     with col2:
-        st.markdown("### 🌐 Preferences")
-        language = st.selectbox("Interpretation Language", ["English", "Urdu (اردو)"])
+        st.markdown('<div class="section-header">🌐 Language</div>', unsafe_allow_html=True)
+        with st.container():
+            language = st.selectbox("Select Interpretation Language", ["English", "Urdu (اردو)"])
+            st.caption("AI will translate complex medical terms into your chosen language.")
 
     if uploaded_file:
         st.markdown("---")
@@ -160,14 +226,15 @@ with tab1:
             image = Image.open(uploaded_file)
             col_img1, col_img2, col_img3 = st.columns([1, 2, 1])
             with col_img2:
-                # Image Card
-                st.markdown('<div style="background: white; padding: 10px; border-radius: 10px; border: 1px solid #ddd;">', unsafe_allow_html=True)
-                st.image(image, caption="Uploaded Document", use_container_width=True)
+                # Image Preview Card
+                st.markdown('<div style="background: white; padding: 15px; border-radius: 12px; border: 1px solid #ddd; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">', unsafe_allow_html=True)
+                st.image(image, caption="Uploaded Document Preview", use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             st.write("")
-            if st.button("🔍 Analyze Report Now", use_container_width=True):
-                with st.spinner("🤖 AI is analyzing..."):
+            # Big Action Button
+            if st.button("✨ Analyze Report Now", use_container_width=True, type="primary"):
+                with st.spinner("🤖 AI is analyzing your report..."):
                     model = get_auto_model()
                     if model:
                         try:
@@ -180,7 +247,7 @@ with tab1:
                             # Result Card
                             st.markdown(f"""<div class="report-box"><h3>📝 AI Analysis Result</h3>{response.text}</div>""", unsafe_allow_html=True)
                             
-                            # PDF Logic (Robust with Logo Download)
+                            # PDF Logic
                             pdf = FPDF()
                             pdf.add_page()
                             try:
@@ -207,27 +274,25 @@ with tab1:
                         except Exception as e:
                              st.warning("🚦 Traffic Limit. Please wait 30 seconds." if "429" in str(e) else f"AI Error: {e}")
                     else:
-                        st.error("No AI models found. Please reboot app.")
+                        st.error("No AI models found. Reboot app.")
         except Exception as e:
             st.error(f"Error processing file: {e}")
 
 # ==========================================
-# TAB 2: SMART PRICE CHECKER (The "Card" Upgrade)
+# TAB 2: SMART PRICE CHECKER (Unchanged & Beautiful)
 # ==========================================
 with tab2:
     st.markdown("### 🏥 Compare Lab Rates in Lahore")
     st.caption("Live prices from verified lab panels.")
 
-    # 1. EXACT GOOGLE MAPS LINKS (Retained)
     LAB_LOCATIONS = {
-        "Mughal Labs": "https://maps.app.goo.gl/MughalLabsLahore", # Placeholder link format
+        "Mughal Labs": "https://maps.app.goo.gl/MughalLabsLahore",
         "Shaukat Khanum": "https://maps.app.goo.gl/SKMLahore",
         "IDC": "https://maps.app.goo.gl/IDCLahore",
         "Chughtai Lab": "https://maps.app.goo.gl/ChughtaiLahore",
         "Al-Noor": "https://maps.app.goo.gl/AlNoorLahore"
     }
 
-    # 2. EXACT COMMON TESTS LIST (Retained)
     COMMON_TESTS = ["Select a test...", "CBC", "HbA1c", "Glucose Profile", "Lipid Profile", "LFTs", "RFTs", "Cardiac Profile", "Thyroid Profile", "Vitamins"]
 
     json_path = 'data/lab_prices.json'
@@ -241,34 +306,24 @@ with tab2:
             
             if selected_test and selected_test != "Select a test...":
                 st.markdown(f"#### 💰 Prices for: **{selected_test}**")
-                
-                # Create 3 Columns for the Grid Layout
                 cols = st.columns(3)
                 
-                # Loop through labs and Create "Cards"
                 for idx, (lab_name, tests) in enumerate(lab_data.items()):
                     with cols[idx % 3]:
-                        
-                        # --- ROBUST PRICE SEARCH LOGIC (Unchanged) ---
-                        price = tests.get(selected_test) # Try Exact Match
+                        price = tests.get(selected_test)
                         if not price:
-                            # Try Smart/Partial Match
                             for k, v in tests.items():
                                 if selected_test.lower() in k.lower() and len(k) < 30:
                                     price = v
                                     break
                         
-                        # --- GENERATE CARD HTML ---
-                        # Logic to choose Green Price or Red "Missing" text
                         if price:
                             price_display = f'<div class="lab-price">Rs. {price}</div>'
                         else:
                             price_display = '<div class="lab-price-missing">Check Lab</div>'
                         
-                        # Get Map Link (Default to Google Maps if missing)
                         map_link = LAB_LOCATIONS.get(lab_name, "https://maps.google.com")
 
-                        # The HTML Structure (Al-Noor Style)
                         card_html = f"""
                         <div class="lab-card">
                             <div class="lab-name">{lab_name}</div>
@@ -276,11 +331,8 @@ with tab2:
                             <a href="{map_link}" target="_blank" class="lab-btn">📍 Get Directions</a>
                         </div>
                         """
-                        
-                        # Render the Card
                         st.markdown(card_html, unsafe_allow_html=True)
             
-            # Footer
             mtime = os.path.getmtime(json_path)
             dt = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
             st.caption(f"Last updated: {dt}")
