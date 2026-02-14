@@ -9,14 +9,14 @@ import requests
 import tempfile
 import re
 
-# --- 1. PAGE CONFIGURATION ---
+# --- 1. CONFIGURATION ---
 st.set_page_config(
     page_title="ReportSay - AI Medical Assistant", 
     page_icon="https://i.postimg.cc/VLmw1MPY/logo.png", 
     layout="wide"
 )
 
-# --- 2. CUSTOM CSS (Blue Theme) ---
+# --- 2. STYLING ---
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
@@ -30,7 +30,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. SECURE API SETUP ---
+# --- 3. API SETUP ---
 if "MY_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["MY_API_KEY"])
 else:
@@ -45,27 +45,42 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. SAFE MODEL SELECTOR ---
-def get_safe_model():
+# --- 5. UNIVERSAL MODEL SELECTOR (THE FIX) ---
+def get_auto_model():
+    """
+    Asks Google what models exist and picks the best one.
+    Stop guessing names.
+    """
     try:
-        priority_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro-vision"]
-        available = [m.name for m in genai.list_models()]
-        for p in priority_models:
-            for a in available:
-                if p in a: return genai.GenerativeModel(a)
-        return genai.GenerativeModel('gemini-pro-vision')
-    except: return genai.GenerativeModel('gemini-1.5-flash')
+        # Get EVERYTHING available
+        all_models = [m for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        # Strategy 1: Look for Flash (Best Free Tier)
+        for m in all_models:
+            if 'flash' in m.name: return genai.GenerativeModel(m.name)
+            
+        # Strategy 2: Look for Pro 1.5 (New Standard)
+        for m in all_models:
+            if '1.5-pro' in m.name: return genai.GenerativeModel(m.name)
+            
+        # Strategy 3: Look for any "Gemini" model
+        for m in all_models:
+            if 'gemini' in m.name: return genai.GenerativeModel(m.name)
+            
+        # Emergency: Pick the FIRST one in the list
+        if all_models:
+            return genai.GenerativeModel(all_models[0].name)
+            
+        return None
+    except Exception as e:
+        st.error(f"Connection Error: {e}")
+        return None
 
-# --- 6. TEXT CLEANER FOR PDF (THE FIX) ---
+# --- 6. PDF CLEANER ---
 def clean_text_for_pdf(text):
-    """
-    Removes Markdown symbols like **bold** and ## headers
-    so the PDF looks professional and clean.
-    """
-    # Remove bold/italic markers (* or _)
+    # Remove Markdown bold/italic/headers
     text = re.sub(r'\*\*|__', '', text)
     text = re.sub(r'\*|_', '', text)
-    # Remove hash headers (### Title)
     text = re.sub(r'^#+\s+', '', text, flags=re.MULTILINE)
     return text
 
@@ -93,60 +108,67 @@ with tab1:
                 st.image(image, caption="Uploaded Document", use_container_width=True)
             
             if st.button("🔍 Analyze Report Now"):
-                with st.spinner("🤖 AI is thinking..."):
-                    model = get_safe_model()
-                    try:
-                        prompt = (
-                            f"You are a medical lab expert. Analyze this report in {language}. "
-                            "1. Summarize findings.\n2. Highlight abnormalities.\n3. Disclaimer: Consult a doctor."
-                        )
-                        response = model.generate_content([prompt, image])
-                        
-                        # Display (Markdown is GOOD here)
-                        st.markdown(f"""<div class="report-box"><h3>📝 AI Analysis Result</h3>{response.text}</div>""", unsafe_allow_html=True)
-                        
-                        # PDF Logic
-                        pdf = FPDF()
-                        pdf.add_page()
-                        
-                        # Add Logo
-                        logo_url = "https://i.postimg.cc/VLmw1MPY/logo.png"
+                with st.spinner("🤖 AI is connecting..."):
+                    
+                    # USE UNIVERSAL SELECTOR
+                    model = get_auto_model()
+                    
+                    if model:
                         try:
-                            img_resp = requests.get(logo_url)
-                            if img_resp.status_code == 200:
-                                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
-                                    tmp_file.write(img_resp.content)
-                                    tmp_logo_path = tmp_file.name
-                                pdf.image(tmp_logo_path, x=10, y=8, w=30)
-                        except: pass
+                            prompt = (
+                                f"You are a medical lab expert. Analyze this report in {language}. "
+                                "1. Summarize findings.\n2. Highlight abnormalities.\n3. Disclaimer: Consult a doctor."
+                            )
+                            response = model.generate_content([prompt, image])
+                            
+                            # SHOW RESULT
+                            st.markdown(f"""<div class="report-box"><h3>📝 AI Analysis Result</h3>{response.text}</div>""", unsafe_allow_html=True)
+                            
+                            # PDF GENERATION
+                            pdf = FPDF()
+                            pdf.add_page()
+                            
+                            # Logo
+                            logo_url = "https://i.postimg.cc/VLmw1MPY/logo.png"
+                            try:
+                                img_resp = requests.get(logo_url)
+                                if img_resp.status_code == 200:
+                                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
+                                        tmp_file.write(img_resp.content)
+                                        tmp_logo_path = tmp_file.name
+                                    pdf.image(tmp_logo_path, x=10, y=8, w=30)
+                            except: pass
 
-                        pdf.set_xy(10, 40)
-                        pdf.set_font("Arial", 'B', 16)
-                        pdf.cell(0, 10, txt="ReportSay Analysis", ln=True, align='C')
-                        pdf.ln(5)
-                        
-                        pdf.set_font("Arial", size=11)
-                        
-                        # --- CLEAN TEXT BEFORE WRITING TO PDF ---
-                        raw_text = response.text
-                        polished_text = clean_text_for_pdf(raw_text)
-                        
-                        # Handle encoding (important for symbols)
-                        final_pdf_text = polished_text.encode('latin-1', 'replace').decode('latin-1')
-                        pdf.multi_cell(0, 7, txt=final_pdf_text)
-                        
-                        pdf.ln(10)
-                        pdf.set_font("Arial", 'I', 8)
-                        pdf.cell(0, 10, txt="Generated by ReportSay AI. Not a medical diagnosis.", align='C')
-                        
-                        pdf_output = pdf.output(dest='S').encode('latin-1')
-                        st.download_button("📥 Download Official Report (PDF)", pdf_output, "ReportSay_Analysis.pdf", "application/pdf")
-                        
-                    except Exception as e:
-                        if "429" in str(e):
-                            st.warning("🚦 Traffic Limit. Please wait 30 seconds.")
-                        else:
-                            st.error(f"AI Error: {e}")
+                            pdf.set_xy(10, 40)
+                            pdf.set_font("Arial", 'B', 16)
+                            pdf.cell(0, 10, txt="ReportSay Analysis", ln=True, align='C')
+                            pdf.ln(5)
+                            
+                            # CLEAN TEXT
+                            pdf.set_font("Arial", size=11)
+                            clean_txt = clean_text_for_pdf(response.text)
+                            encoded_txt = clean_txt.encode('latin-1', 'replace').decode('latin-1')
+                            pdf.multi_cell(0, 7, txt=encoded_txt)
+                            
+                            pdf.ln(10)
+                            pdf.set_font("Arial", 'I', 8)
+                            pdf.cell(0, 10, txt="Generated by ReportSay AI. Not a medical diagnosis.", align='C')
+                            
+                            pdf_output = pdf.output(dest='S').encode('latin-1')
+                            st.download_button("📥 Download Official Report (PDF)", pdf_output, "ReportSay_Analysis.pdf", "application/pdf")
+                            
+                        except Exception as e:
+                            if "429" in str(e):
+                                st.warning("🚦 Traffic Limit. Please wait 30 seconds.")
+                            else:
+                                st.error(f"Model Error ({model.model_name}): {e}")
+                    else:
+                        st.error("CRITICAL: No AI models found.")
+                        st.write("DEBUG INFO - AVAILABLE MODELS:")
+                        # Print what IS available so we know for sure
+                        for m in genai.list_models():
+                            if 'generateContent' in m.supported_generation_methods:
+                                st.code(m.name)
 
         except Exception as e:
             st.error(f"Error processing file: {e}")
