@@ -7,6 +7,7 @@ import datetime
 from fpdf import FPDF
 import requests
 import tempfile
+import time
 
 # --- 1. PAGE CONFIGURATION ---
 st.set_page_config(
@@ -44,31 +45,26 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. AUTOMATED MODEL SELECTOR (The Fix) ---
-def get_best_model():
+# --- 5. SAFE MODEL SELECTOR ---
+def get_safe_model():
     """
-    Automatically finds the best available Gemini model.
-    Prioritizes Flash (Fast) > Pro (Smart) > Standard.
+    Safely selects a model that is likely to work with the free tier.
     """
     try:
-        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        # We HARDCODE the preference for Flash because it has the best free quota.
+        # Only if Flash fails do we look for others.
+        priority_models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-pro-vision"]
         
-        # Priority list of models we prefer
-        preferences = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro-vision", "gemini-pro"]
+        available = [m.name for m in genai.list_models()]
         
-        for pref in preferences:
-            for model in available_models:
-                if pref in model:
-                    return genai.GenerativeModel(model)
+        for p in priority_models:
+            for a in available:
+                if p in a:
+                    return genai.GenerativeModel(a)
         
-        # Fallback: If none of our preferences exist, take the first available one
-        if available_models:
-            return genai.GenerativeModel(available_models[0])
-            
-        return None
-    except Exception as e:
-        st.error(f"Error auto-detecting model: {e}")
-        return None
+        return genai.GenerativeModel('gemini-pro-vision') # Last resort fallback
+    except:
+        return genai.GenerativeModel('gemini-1.5-flash')
 
 # --- 6. TABS ---
 tab1, tab2 = st.tabs(["📄 AI Report Analysis", "💰 Smart Price Checker (Lahore)"])
@@ -94,60 +90,60 @@ with tab1:
                 st.image(image, caption="Uploaded Document", use_container_width=True)
             
             if st.button("🔍 Analyze Report Now"):
-                with st.spinner("🤖 AI is finding the best model for you..."):
+                with st.spinner("🤖 AI is thinking... (This might take a moment)"):
                     
-                    # USE THE AUTO-SELECTOR
-                    model = get_best_model()
+                    model = get_safe_model()
                     
-                    if model:
+                    try:
+                        prompt = (
+                            f"You are a medical lab expert. Analyze this report in {language}. "
+                            "1. Summarize findings.\n2. Highlight abnormalities.\n3. Disclaimer: Consult a doctor."
+                        )
+                        response = model.generate_content([prompt, image])
+                        
+                        # Display Result
+                        st.markdown(f"""<div class="report-box"><h3>📝 AI Analysis Result</h3>{response.text}</div>""", unsafe_allow_html=True)
+                        
+                        # PDF Logic
+                        pdf = FPDF()
+                        pdf.add_page()
+                        
+                        # Logo (Safe Download)
+                        logo_url = "https://i.postimg.cc/VLmw1MPY/logo.png"
                         try:
-                            prompt = (
-                                f"You are a medical lab expert. Analyze this report in {language}. "
-                                "1. Summarize findings.\n2. Highlight abnormalities.\n3. Disclaimer: Consult a doctor."
-                            )
-                            response = model.generate_content([prompt, image])
-                            
-                            st.markdown(f"""<div class="report-box"><h3>📝 AI Analysis Result</h3>{response.text}</div>""", unsafe_allow_html=True)
-                            
-                            # --- PDF GENERATION WITH LOGO FIX ---
-                            pdf = FPDF()
-                            pdf.add_page()
-                            
-                            # 1. Force Download Logo to Temp File
-                            logo_url = "https://i.postimg.cc/VLmw1MPY/logo.png"
-                            try:
-                                img_resp = requests.get(logo_url)
-                                if img_resp.status_code == 200:
-                                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
-                                        tmp_file.write(img_resp.content)
-                                        tmp_logo_path = tmp_file.name
-                                    # Place logo at top-left
-                                    pdf.image(tmp_logo_path, x=10, y=8, w=30)
-                            except Exception as e:
-                                st.warning(f"Could not load logo for PDF: {e}")
+                            img_resp = requests.get(logo_url)
+                            if img_resp.status_code == 200:
+                                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
+                                    tmp_file.write(img_resp.content)
+                                    tmp_logo_path = tmp_file.name
+                                pdf.image(tmp_logo_path, x=10, y=8, w=30)
+                        except: pass
 
-                            # 2. Title & Content
-                            pdf.set_xy(10, 40) # Move cursor below logo
-                            pdf.set_font("Arial", 'B', 16)
-                            pdf.cell(0, 10, txt="ReportSay Analysis", ln=True, align='C')
-                            pdf.ln(5)
-                            
-                            pdf.set_font("Arial", size=11)
-                            text_content = response.text.encode('latin-1', 'replace').decode('latin-1')
-                            pdf.multi_cell(0, 7, txt=text_content)
-                            
-                            # 3. Footer
-                            pdf.ln(10)
-                            pdf.set_font("Arial", 'I', 8)
-                            pdf.cell(0, 10, txt="Generated by ReportSay AI. Not a medical diagnosis.", align='C')
-                            
-                            pdf_output = pdf.output(dest='S').encode('latin-1')
-                            st.download_button("📥 Download Official Report (PDF)", pdf_output, "ReportSay_Analysis.pdf", "application/pdf")
-                            
-                        except Exception as inner_e:
-                            st.error(f"Model ({model.model_name}) error: {inner_e}")
-                    else:
-                        st.error("CRITICAL: No AI models found. Update 'google-generativeai' in requirements.txt.")
+                        pdf.set_xy(10, 40)
+                        pdf.set_font("Arial", 'B', 16)
+                        pdf.cell(0, 10, txt="ReportSay Analysis", ln=True, align='C')
+                        pdf.ln(5)
+                        
+                        pdf.set_font("Arial", size=11)
+                        # Fix encoding issues
+                        clean_text = response.text.encode('latin-1', 'replace').decode('latin-1')
+                        pdf.multi_cell(0, 7, txt=clean_text)
+                        
+                        pdf.ln(10)
+                        pdf.set_font("Arial", 'I', 8)
+                        pdf.cell(0, 10, txt="Generated by ReportSay AI. Not a medical diagnosis.", align='C')
+                        
+                        pdf_output = pdf.output(dest='S').encode('latin-1')
+                        st.download_button("📥 Download Official Report (PDF)", pdf_output, "ReportSay_Analysis.pdf", "application/pdf")
+                        
+                    except Exception as e:
+                        # ERROR HANDLING FOR QUOTA
+                        err_msg = str(e)
+                        if "429" in err_msg or "quota" in err_msg.lower():
+                            st.warning("🚦 **Traffic Limit Reached**: The AI is very popular right now!")
+                            st.info("Please wait 30 seconds and try clicking 'Analyze' again.")
+                        else:
+                            st.error(f"AI Error: {e}")
 
         except Exception as e:
             st.error(f"Error processing file: {e}")
@@ -166,7 +162,7 @@ with tab2:
             with open(json_path, 'r') as f:
                 lab_data = json.load(f)
             
-            # Filter out numbers from dropdown
+            # Filter numbers
             all_tests = set()
             for tests in lab_data.values():
                 for k in tests.keys():
