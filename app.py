@@ -174,11 +174,35 @@ with tab1:
             st.error(f"Error processing file: {e}")
 
 # ==========================================
-# TAB 2: SMART PRICE CHECKER
+# ==========================================
+# TAB 2: SMART PRICE CHECKER (Lahore)
 # ==========================================
 with tab2:
     st.markdown("### 🏥 Compare Lab Rates in Lahore")
     st.caption("Live prices from Mughal, SKM, Al-Noor, IDC, and Chughtai.")
+
+    # --- 1. GOOGLE MAPS LINKS ---
+    LAB_LOCATIONS = {
+        "Mughal Labs": "https://www.google.com/maps/search/Mughal+Labs+Lahore",
+        "Shaukat Khanum": "https://www.google.com/maps/search/Shaukat+Khanum+Laboratory+Collection+Centre+Lahore",
+        "IDC": "https://www.google.com/maps/search/IDC+Islamabad+Diagnostic+Centre+Lahore",
+        "Chughtai Lab": "https://www.google.com/maps/search/Chughtai+Lab+Lahore",
+        "Al-Noor": "https://www.google.com/maps/search/Al-Noor+Diagnostic+Centre+Lahore"
+    }
+
+    # --- 2. THE COMMON TESTS LIST (Requested) ---
+    COMMON_TESTS = [
+        "Select a test...",
+        "CBC",
+        "HbA1c",
+        "Glucose Profile",
+        "Lipid Profile",
+        "LFTs",
+        "RFTs",
+        "Cardiac Profile",
+        "Thyroid Profile",
+        "Vitamins"
+    ]
 
     json_path = 'data/lab_prices.json'
     
@@ -187,43 +211,59 @@ with tab2:
             with open(json_path, 'r') as f:
                 lab_data = json.load(f)
             
-            all_tests = set()
-            for tests in lab_data.values():
-                for k in tests.keys():
-                    clean_k = k.replace(',', '').replace('.', '').strip()
-                    if not clean_k.isdigit() and len(clean_k) > 1:
-                        all_tests.add(k)
-            
+            # --- 3. THE DROPDOWN ---
             selected_test = st.selectbox(
                 "Select a Commonly Prescribed Test:",
-                options=[""] + sorted(list(all_tests)),
-                format_func=lambda x: "Type to search..." if x == "" else x
+                options=COMMON_TESTS
             )
             
-            if selected_test:
+            if selected_test and selected_test != "Select a test...":
                 st.markdown(f"#### 💰 Price Comparison: **{selected_test}**")
+                
+                # Display results in 3 columns
                 cols = st.columns(3)
-                found = False
+                found_anywhere = False
+                
                 for idx, (lab_name, tests) in enumerate(lab_data.items()):
                     with cols[idx % 3]:
+                        # A. Lab Header
                         st.markdown(f"**{lab_name}**")
-                        price = tests.get(selected_test)
+                        
+                        # B. Find Price Logic
+                        price = tests.get(selected_test) # 1. Try Exact Match
+                        
                         if not price:
+                            # 2. Try Smart Search (e.g. finding 'CBC' inside 'C.B.C')
                             for k, v in tests.items():
-                                if selected_test.lower() in k.lower() and not k.replace(',','').isdigit():
+                                # Clean keys to improve matching (remove dots/spaces)
+                                clean_k = k.replace('.', '').replace(' ', '').lower()
+                                clean_sel = selected_test.replace('.', '').replace(' ', '').lower()
+                                
+                                if clean_sel in clean_k:
                                     price = v
                                     break
+                        
+                        # C. Display Price & Button
                         if price:
                             st.success(f"Rs. {price}")
-                            found = True
+                            found_anywhere = True
                         else:
                             st.info("Check Lab")
-                if not found:
-                    st.warning("Price not available in current database.")
-            
+                        
+                        # D. Google Maps Button
+                        map_url = LAB_LOCATIONS.get(lab_name)
+                        if map_url:
+                            st.link_button("📍 Get Directions", map_url)
+                        st.markdown("---") # Separator line
+                
+                if not found_anywhere:
+                    st.warning(f"Price for '{selected_test}' not found in the latest update. Please call the lab directly.")
+
+            # --- 4. FOOTER INFO ---
             mtime = os.path.getmtime(json_path)
             dt = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
             st.caption(f"Last updated: {dt}")
+            
         except Exception as e:
             st.error(f"Data Error: {e}")
     else:
