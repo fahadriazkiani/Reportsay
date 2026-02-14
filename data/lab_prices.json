@@ -53,5 +53,16 @@
         "Cardiac Profile": "4200",
         "Thyroid Profile": "3900",
         "Vitamins": "3700"
+    },
+    "Excel Labs": {
+        "CBC": "1050",
+        "HbA1c": "2500",
+        "Glucose Profile": "650",
+        "Lipid Profile": "2700",
+        "LFTs": "2200",
+        "RFTs": "2200",
+        "Cardiac Profile": "5500",
+        "Thyroid Profile": "4200",
+        "Vitamins": "5200"
     }
 }
