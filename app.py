@@ -6,7 +6,7 @@ import urllib.parse  # Used to create the free Maps links
 # ==========================================
 # 🔑 SETUP: PASTE YOUR API KEY BELOW
 # ==========================================
-GOOGLE_API_KEY = "AIzaSyAMQNqfsL2WfPuLbB5nSMlf5vf1v7KcxFI"
+genai.configure(api_key=st.secrets["MY_API_KEY"])
 genai.configure(api_key=GOOGLE_API_KEY)
 
 st.set_page_config(page_title="Reportsay", page_icon="🩺", layout="centered")
