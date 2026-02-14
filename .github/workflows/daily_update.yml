@@ -1,0 +1,33 @@
+name: Daily Lab Price Update
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs every night at midnight
+  workflow_dispatch: # Allows you to run it manually
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Run Scraper
+        run: python scraper.py
+
+      - name: Commit and Push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/lab_prices.json
+          git commit -m "Update lab prices [automated]" || exit 0
+          git push
