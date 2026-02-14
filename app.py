@@ -7,7 +7,7 @@ import datetime
 from fpdf import FPDF
 import requests
 import tempfile
-import time
+import re
 
 # --- 1. PAGE CONFIGURATION ---
 st.set_page_config(
@@ -47,26 +47,29 @@ st.markdown("""
 
 # --- 5. SAFE MODEL SELECTOR ---
 def get_safe_model():
-    """
-    Safely selects a model that is likely to work with the free tier.
-    """
     try:
-        # We HARDCODE the preference for Flash because it has the best free quota.
-        # Only if Flash fails do we look for others.
-        priority_models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-pro-vision"]
-        
+        priority_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro-vision"]
         available = [m.name for m in genai.list_models()]
-        
         for p in priority_models:
             for a in available:
-                if p in a:
-                    return genai.GenerativeModel(a)
-        
-        return genai.GenerativeModel('gemini-pro-vision') # Last resort fallback
-    except:
-        return genai.GenerativeModel('gemini-1.5-flash')
+                if p in a: return genai.GenerativeModel(a)
+        return genai.GenerativeModel('gemini-pro-vision')
+    except: return genai.GenerativeModel('gemini-1.5-flash')
 
-# --- 6. TABS ---
+# --- 6. TEXT CLEANER FOR PDF (THE FIX) ---
+def clean_text_for_pdf(text):
+    """
+    Removes Markdown symbols like **bold** and ## headers
+    so the PDF looks professional and clean.
+    """
+    # Remove bold/italic markers (* or _)
+    text = re.sub(r'\*\*|__', '', text)
+    text = re.sub(r'\*|_', '', text)
+    # Remove hash headers (### Title)
+    text = re.sub(r'^#+\s+', '', text, flags=re.MULTILINE)
+    return text
+
+# --- 7. TABS ---
 tab1, tab2 = st.tabs(["📄 AI Report Analysis", "💰 Smart Price Checker (Lahore)"])
 
 # ==========================================
@@ -90,10 +93,8 @@ with tab1:
                 st.image(image, caption="Uploaded Document", use_container_width=True)
             
             if st.button("🔍 Analyze Report Now"):
-                with st.spinner("🤖 AI is thinking... (This might take a moment)"):
-                    
+                with st.spinner("🤖 AI is thinking..."):
                     model = get_safe_model()
-                    
                     try:
                         prompt = (
                             f"You are a medical lab expert. Analyze this report in {language}. "
@@ -101,14 +102,14 @@ with tab1:
                         )
                         response = model.generate_content([prompt, image])
                         
-                        # Display Result
+                        # Display (Markdown is GOOD here)
                         st.markdown(f"""<div class="report-box"><h3>📝 AI Analysis Result</h3>{response.text}</div>""", unsafe_allow_html=True)
                         
                         # PDF Logic
                         pdf = FPDF()
                         pdf.add_page()
                         
-                        # Logo (Safe Download)
+                        # Add Logo
                         logo_url = "https://i.postimg.cc/VLmw1MPY/logo.png"
                         try:
                             img_resp = requests.get(logo_url)
@@ -125,9 +126,14 @@ with tab1:
                         pdf.ln(5)
                         
                         pdf.set_font("Arial", size=11)
-                        # Fix encoding issues
-                        clean_text = response.text.encode('latin-1', 'replace').decode('latin-1')
-                        pdf.multi_cell(0, 7, txt=clean_text)
+                        
+                        # --- CLEAN TEXT BEFORE WRITING TO PDF ---
+                        raw_text = response.text
+                        polished_text = clean_text_for_pdf(raw_text)
+                        
+                        # Handle encoding (important for symbols)
+                        final_pdf_text = polished_text.encode('latin-1', 'replace').decode('latin-1')
+                        pdf.multi_cell(0, 7, txt=final_pdf_text)
                         
                         pdf.ln(10)
                         pdf.set_font("Arial", 'I', 8)
@@ -137,11 +143,8 @@ with tab1:
                         st.download_button("📥 Download Official Report (PDF)", pdf_output, "ReportSay_Analysis.pdf", "application/pdf")
                         
                     except Exception as e:
-                        # ERROR HANDLING FOR QUOTA
-                        err_msg = str(e)
-                        if "429" in err_msg or "quota" in err_msg.lower():
-                            st.warning("🚦 **Traffic Limit Reached**: The AI is very popular right now!")
-                            st.info("Please wait 30 seconds and try clicking 'Analyze' again.")
+                        if "429" in str(e):
+                            st.warning("🚦 Traffic Limit. Please wait 30 seconds.")
                         else:
                             st.error(f"AI Error: {e}")
 
@@ -162,7 +165,6 @@ with tab2:
             with open(json_path, 'r') as f:
                 lab_data = json.load(f)
             
-            # Filter numbers
             all_tests = set()
             for tests in lab_data.values():
                 for k in tests.keys():
