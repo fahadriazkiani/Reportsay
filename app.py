@@ -3,18 +3,19 @@ import google.generativeai as genai
 from PIL import Image
 import json
 import os
+import datetime
+from fpdf import FPDF
 import requests
 import tempfile
-from fpdf import FPDF
 
-# --- 1. CONFIGURATION ---
+# --- 1. PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="ReportSay - AI Medical Assistant", 
     page_icon="https://i.postimg.cc/VLmw1MPY/logo.png", 
     layout="wide"
 )
 
-# --- 2. CSS STYLING ---
+# --- 2. CUSTOM CSS (Blue Theme) ---
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
@@ -28,7 +29,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. API SETUP ---
+# --- 3. SECURE API SETUP ---
 if "MY_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["MY_API_KEY"])
 else:
@@ -43,39 +44,33 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. SMART MODEL SELECTOR (THE FIX) ---
-def get_working_model():
+# --- 5. AUTOMATED MODEL SELECTOR (The Fix) ---
+def get_best_model():
     """
-    Dynamically finds a working model instead of hardcoding one.
+    Automatically finds the best available Gemini model.
+    Prioritizes Flash (Fast) > Pro (Smart) > Standard.
     """
     try:
-        # Ask Google what is available
-        available_models = []
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                available_models.append(m.name)
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
-        # 1. Try to find the best modern model (Flash)
-        for model_name in available_models:
-            if "gemini-1.5-flash" in model_name:
-                return genai.GenerativeModel(model_name)
+        # Priority list of models we prefer
+        preferences = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro-vision", "gemini-pro"]
         
-        # 2. If Flash not found, look for Pro Vision (Legacy)
-        for model_name in available_models:
-            if "gemini-pro-vision" in model_name:
-                return genai.GenerativeModel(model_name)
-                
-        # 3. If neither, just pick the first one that supports vision/images
-        # (Usually models with 'vision' or '1.5' in the name support images)
+        for pref in preferences:
+            for model in available_models:
+                if pref in model:
+                    return genai.GenerativeModel(model)
+        
+        # Fallback: If none of our preferences exist, take the first available one
         if available_models:
-             return genai.GenerativeModel(available_models[0])
-             
+            return genai.GenerativeModel(available_models[0])
+            
         return None
     except Exception as e:
-        st.error(f"Error listing models: {e}")
+        st.error(f"Error auto-detecting model: {e}")
         return None
 
-# --- 6. MAIN TABS ---
+# --- 6. TABS ---
 tab1, tab2 = st.tabs(["📄 AI Report Analysis", "💰 Smart Price Checker (Lahore)"])
 
 # ==========================================
@@ -99,13 +94,12 @@ with tab1:
                 st.image(image, caption="Uploaded Document", use_container_width=True)
             
             if st.button("🔍 Analyze Report Now"):
-                with st.spinner("🤖 AI is finding the best model..."):
+                with st.spinner("🤖 AI is finding the best model for you..."):
                     
-                    # CALL THE SMART SELECTOR
-                    model = get_working_model()
+                    # USE THE AUTO-SELECTOR
+                    model = get_best_model()
                     
                     if model:
-                        # Test if the selected model actually works
                         try:
                             prompt = (
                                 f"You are a medical lab expert. Analyze this report in {language}. "
@@ -113,82 +107,104 @@ with tab1:
                             )
                             response = model.generate_content([prompt, image])
                             
-                            # Success! Display it.
                             st.markdown(f"""<div class="report-box"><h3>📝 AI Analysis Result</h3>{response.text}</div>""", unsafe_allow_html=True)
                             
-                            # PDF Logic
+                            # --- PDF GENERATION WITH LOGO FIX ---
                             pdf = FPDF()
                             pdf.add_page()
-                            # (Logo logic omitted for brevity, focus is on AI fix first)
+                            
+                            # 1. Force Download Logo to Temp File
+                            logo_url = "https://i.postimg.cc/VLmw1MPY/logo.png"
+                            try:
+                                img_resp = requests.get(logo_url)
+                                if img_resp.status_code == 200:
+                                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
+                                        tmp_file.write(img_resp.content)
+                                        tmp_logo_path = tmp_file.name
+                                    # Place logo at top-left
+                                    pdf.image(tmp_logo_path, x=10, y=8, w=30)
+                            except Exception as e:
+                                st.warning(f"Could not load logo for PDF: {e}")
+
+                            # 2. Title & Content
+                            pdf.set_xy(10, 40) # Move cursor below logo
                             pdf.set_font("Arial", 'B', 16)
                             pdf.cell(0, 10, txt="ReportSay Analysis", ln=True, align='C')
-                            pdf.ln(10)
+                            pdf.ln(5)
+                            
                             pdf.set_font("Arial", size=11)
                             text_content = response.text.encode('latin-1', 'replace').decode('latin-1')
                             pdf.multi_cell(0, 7, txt=text_content)
-                            pdf_output = pdf.output(dest='S').encode('latin-1')
                             
-                            st.download_button("📥 Download PDF", pdf_output, "ReportSay_Analysis.pdf", "application/pdf")
+                            # 3. Footer
+                            pdf.ln(10)
+                            pdf.set_font("Arial", 'I', 8)
+                            pdf.cell(0, 10, txt="Generated by ReportSay AI. Not a medical diagnosis.", align='C')
+                            
+                            pdf_output = pdf.output(dest='S').encode('latin-1')
+                            st.download_button("📥 Download Official Report (PDF)", pdf_output, "ReportSay_Analysis.pdf", "application/pdf")
                             
                         except Exception as inner_e:
-                            st.error(f"Model found ({model.model_name}) but failed to generate: {inner_e}")
-                            st.info("Debugging: Try updating requirements.txt to 'google-generativeai>=0.7.0'")
+                            st.error(f"Model ({model.model_name}) error: {inner_e}")
                     else:
-                        st.error("CRITICAL: No AI models found available for your API Key.")
-                        st.write("Debug Info - Available models:")
-                        # Print list for debugging
-                        for m in genai.list_models():
-                            st.code(m.name)
+                        st.error("CRITICAL: No AI models found. Update 'google-generativeai' in requirements.txt.")
 
         except Exception as e:
             st.error(f"Error processing file: {e}")
 
 # ==========================================
-# TAB 2: # --- TAB 2: DYNAMIC PRICE CHECKER ---
+# TAB 2: SMART PRICE CHECKER
+# ==========================================
 with tab2:
-    st.write("### 🏥 Real-Time Lab Rates in Lahore")
+    st.markdown("### 🏥 Compare Lab Rates in Lahore")
+    st.caption("Live prices from Mughal, SKM, Al-Noor, IDC, and Chughtai.")
+
+    json_path = 'data/lab_prices.json'
     
-    # 1. LOAD THE SCRAPED DATA
-    try:
-        with open('data/lab_prices.json', 'r') as f:
-            live_data = json.load(f)
-        st.sidebar.info("✨ Prices updated today")
-    except:
-        live_data = {} # Backup if file isn't ready yet
-
-    test_name = st.selectbox("Select a Test:", 
-                             ["CBC", "LFT", "RFT", "Lipid Profile", "HbA1c", "Thyroid", "Vitamin D"])
-    
-    if st.button("Check Live Prices"):
-        # Helper to find price in our scraped data
-        def get_live_price(lab, test, backup):
-            # Try to find an exact match or a partial match in the scraped names
-            lab_data = live_data.get(lab, {})
-            for name, price in lab_data.items():
-                if test.lower() in name.lower():
-                    return price
-            return backup # Use your manual price if scraper didn't find it
-
-        # Display results
-        col1, col2, col3 = st.columns([2, 1, 1])
-        col1.write("**Laboratory**")
-        col2.write("**Price (PKR)**")
-        col3.write("**Location**")
-        st.divider()
-
-        # Define Labs to show
-        labs = [
-            {"name": "Mughal", "backup": "Rs. 750", "loc": "Mughal Labs Lahore"},
-            {"name": "Chughtai", "backup": "Rs. 950", "loc": "Chughtai Lab Lahore"},
-            {"name": "IDC", "backup": "Rs. 900", "loc": "IDC Lahore"}
-        ]
-
-        for lab in labs:
-            price = get_live_price(lab['name'], test_name, lab['backup'])
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, 'r') as f:
+                lab_data = json.load(f)
             
-            c1, c2, c3 = st.columns([2, 1, 1])
-            c1.write(f"**{lab['name']} Labs**")
-            c2.write(f"**{price}**")
-            query = urllib.parse.quote(lab['loc'])
-            c3.link_button("📍 Find", f"https://www.google.com/maps/search/{query}")
-            st.divider()
+            # Filter out numbers from dropdown
+            all_tests = set()
+            for tests in lab_data.values():
+                for k in tests.keys():
+                    clean_k = k.replace(',', '').replace('.', '').strip()
+                    if not clean_k.isdigit() and len(clean_k) > 1:
+                        all_tests.add(k)
+            
+            selected_test = st.selectbox(
+                "Select a Commonly Prescribed Test:",
+                options=[""] + sorted(list(all_tests)),
+                format_func=lambda x: "Type to search..." if x == "" else x
+            )
+            
+            if selected_test:
+                st.markdown(f"#### 💰 Price Comparison: **{selected_test}**")
+                cols = st.columns(3)
+                found = False
+                for idx, (lab_name, tests) in enumerate(lab_data.items()):
+                    with cols[idx % 3]:
+                        st.markdown(f"**{lab_name}**")
+                        price = tests.get(selected_test)
+                        if not price:
+                            for k, v in tests.items():
+                                if selected_test.lower() in k.lower() and not k.replace(',','').isdigit():
+                                    price = v
+                                    break
+                        if price:
+                            st.success(f"Rs. {price}")
+                            found = True
+                        else:
+                            st.info("Check Lab")
+                if not found:
+                    st.warning("Price not available in current database.")
+            
+            mtime = os.path.getmtime(json_path)
+            dt = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
+            st.caption(f"Last updated: {dt}")
+        except Exception as e:
+            st.error(f"Data Error: {e}")
+    else:
+        st.warning("⚠️ Database is updating. Please run the 'Daily Lab Price Update' workflow on GitHub.")
