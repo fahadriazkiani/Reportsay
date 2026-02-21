@@ -555,8 +555,11 @@ with tab2:
             if price:
                 prices_found.append(int(price))
 
-price_display = f'<div class="lab-price">Rs. {int(price):,}</div>' if price else '<div class="lab-price-missing">Call to confirm</div>'
-map_link = LAB_LOCATIONS.get(lab_name, "https://www.google.com/maps/search/diagnostic+labs+lahore")
+            try:
+                price_display = f'<div class="lab-price">Rs. {int(price):,}</div>' if price else '<div class="lab-price-missing">Call to confirm</div>'
+            except (ValueError, TypeError):
+                price_display = f'<div class="lab-price">Rs. {price}</div>' if price else '<div class="lab-price-missing">Call to confirm</div>'
+            map_link = LAB_LOCATIONS.get(lab_name, "https://www.google.com/maps/search/diagnostic+labs+lahore")
 
             with cols[idx % 3]:
                 st.markdown(f"""
