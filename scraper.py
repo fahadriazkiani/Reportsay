@@ -7,9 +7,17 @@ import os
 # All prices stored as integers (not strings) to avoid formatting errors in the app
 BACKUP_PRICES = {
     "Mughal Labs": {
-        "CBC": 900, "HbA1c": 2000, "Glucose Profile": 600,
-        "Lipid Profile": 2500, "LFTs": 1800, "RFTs": 1500,
-        "Cardiac Profile": 4500, "Thyroid Profile": 3200, "Vitamins": 3950
+        "Mughal Labs": {
+    "CBC": 800,
+    "HbA1c": 2300,
+    "Glucose Profile": 450,
+    "Lipid Profile": 2500,
+    "LFTs": 2200,
+    "RFTs": 1650,
+    "Cardiac Profile": 6400,
+    "Thyroid Profile": 3950,
+    "Vitamins": 3950
+},
     },
     "Shaukat Khanum": {
         "CBC": 1100, "HbA1c": 2400, "Glucose Profile": 850,
