@@ -344,9 +344,15 @@ FALLBACK_PRICES = {
         "Thyroid Profile": 3000, "Vitamins": 2200
     },
     "Mughal Labs": {
-        "CBC": 500, "HbA1c": 900, "Glucose Profile": 400,
-        "Lipid Profile": 1400, "LFTs": 1800, "RFTs": 1200,
-        "Thyroid Profile": 2000, "Vitamins": 1500
+        "CBC": 800,
+    "HbA1c": 2300,
+    "Glucose Profile": 450,
+    "Lipid Profile": 2500,
+    "LFTs": 2200,
+    "RFTs": 1650,
+    "Cardiac Profile": 6400,
+    "Thyroid Profile": 3950,
+    "Vitamins": 3950
     },
     "IDC": {
         "CBC": 650, "HbA1c": 1100, "Glucose Profile": 450,
