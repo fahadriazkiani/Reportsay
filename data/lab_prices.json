@@ -10,16 +10,7 @@
             "Cardiac Profile": 6400,
             "Thyroid Profile": 3950,
             "Vitamins": 3950
-        },
-        "LFTs": 6440,
-        "CBC": 5250,
-        "Glucose Profile": 2450,
-        "Thyroid Profile": 10150,
-        "RFTs": 1050,
-        "Cardiac Profile": 3955,
-        "Lipid Profile": 1575,
-        "HbA1c": 4550,
-        "Vitamins": 3675
+        }
     },
     "Shaukat Khanum": {
         "CBC": 1100,
